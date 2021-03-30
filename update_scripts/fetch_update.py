@@ -13,9 +13,9 @@ time_series = data.DataFrame([row.split(',') for row in raw_data[1:]], columns =
 
 #Rename and format the required columns and drop the rest.
 time_series.index = data.to_datetime(time_series.Date, dayfirst = True)
-time_series = time_series.rename(columns = {"Cumulative Cases": "Confirmed", "Cumulative Recovered": "Recovered/Migrated", "Cumulative Deaths": "Deceased"})
-time_series = time_series[["Confirmed", "Recovered/Migrated", "Deceased"]]
-time_series = time_series.astype({"Confirmed": int, "Recovered/Migrated": int, "Deceased": int})
+time_series = time_series.rename(columns = {"Cumulative Cases": "Confirmed", "Cumulative Recovered": "Recovered", "Cumulative Deaths": "Deceased"})
+time_series = time_series[["Confirmed", "Recovered", "Deceased"]]
+time_series = time_series.astype({"Confirmed": int, "Recovered": int, "Deceased": int})
 
 #Store the time-series to a CSV file.
 time_series.to_csv(base_dir + "time-series/Mumbai_aggregated.csv")
