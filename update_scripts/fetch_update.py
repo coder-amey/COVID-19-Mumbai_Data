@@ -23,6 +23,7 @@ time_series.to_csv(base_dir + "time-series/Mumbai_aggregated.csv", index = False
 
 #Load the days-to-double series.
 days_to_double = data.read_csv(base_dir + "time-series/Mumbai_days_to_double.csv")
+days_to_double.Date = data.to_datetime(days_to_double.Date, dayfirst = True)
 #Iterate over new rows.
 days_to_double = days_to_double.append(
 	[{"Date": row.Date,
@@ -34,3 +35,46 @@ days_to_double = days_to_double.append(
 days_to_double.Date = data.to_datetime(days_to_double.Date, dayfirst = True)
 days_to_double = days_to_double.astype({"Confirmed": int, "Deceased": int})
 days_to_double.to_csv(base_dir + "time-series/Mumbai_days_to_double.csv", index = False)
+
+#Load the predictions series.
+predictions = data.read_csv(base_dir + "time-series/Mumbai_predictions.csv")
+predictions.Date = data.to_datetime(predictions.Date, dayfirst = True)
+dates_to_predict = time_series[~time_series.Date.isin(predictions.Date)].Date.tolist()		#Dates in time-series which are not present in predictions.
+#Append new rows.
+for date in dates_to_predict:
+	predictions = predictions.append({"Date": date, "CNF_1D": 0,"CNF_1W": 0,"CNF_2W": 0,"DCS_1D": 0,"DCS_1W": 0,"DCS_2W": 0}, ignore_index = True)
+#Insert predictions.
+for samples, suffix in zip([n_samples, 7 * n_samples, 14 * n_samples], ["1D", "1W", "2W"]):
+	cnf_predictables = []
+	cnf_matrix =[]
+	dcs_matrix = []
+	dcs_predictables = []
+	for date in dates_to_predict:
+		vector = time_series[time_series.Date <= date].Confirmed.tolist()
+		if(vector[-samples] > 0):		#Ensure that only non-zero entries are passed.
+			cnf_predictables.append(date)
+			cnf_matrix.append(vector[-samples:])
+
+		vector = time_series[time_series.Date <= date].Deceased.tolist()
+		if(vector[-samples] > 0):		#Ensure that only non-zero entries are passed.
+			dcs_predictables.append(date)
+			dcs_matrix.append(vector[-samples:])
+
+	pred_index = samples + (samples / n_samples) - 1		#Input index for querying a prediction.
+	#Predict new infections:
+	raw_predictions = maths.rint(exp_predict(pred_index, *exp_reg(cnf_matrix)))
+	
+	for date, pred in zip(cnf_predictables, raw_predictions):
+		predictions.loc[predictions.Date == date, f"CNF_{suffix}"] = pred
+
+	#Predict new deaths:
+	raw_predictions = maths.rint(exp_predict(pred_index, *exp_reg(dcs_matrix)))
+	for date, pred in zip(dcs_predictables, raw_predictions):
+		predictions.loc[predictions.Date == date, f"DCS_{suffix}"] = pred
+
+#Format the columns.
+predictions.Date = data.to_datetime(predictions.Date, dayfirst = True)
+predictions = predictions.astype({"CNF_1D": int,"CNF_1W": int,"CNF_2W": int,"DCS_1D": int,"DCS_1W": int,"DCS_2W": int})
+
+#Store the days-to-double series to a CSV file.
+predictions.to_csv(base_dir + "time-series/Mumbai_predictions.csv", index = False)
