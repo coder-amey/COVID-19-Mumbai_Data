@@ -5,6 +5,13 @@ import requests
 import os.path
 from utility import *
 
+def compute_predictions(matrix, pred_index):
+	"""Get predictions for a matrix of region-wise incremental entries."""
+	if(len(matrix) == 0):
+		return(list())		#Important to send an empty list as predictions.
+	else:
+		return(maths.rint(exp_predict(pred_index, *exp_reg(matrix))))
+
 base_dir = os.path.join(os.path.dirname(__file__), "../")		#Obtain the path to the base directory for absosulte addressing.
 
 #Tabulate the Worksheet data.
@@ -62,13 +69,12 @@ for samples, suffix in zip([n_samples, 7 * n_samples, 14 * n_samples], ["1D", "1
 
 	pred_index = samples + (samples / n_samples) - 1		#Input index for querying a prediction.
 	#Predict new infections:
-	raw_predictions = maths.rint(exp_predict(pred_index, *exp_reg(cnf_matrix)))
-	
+	raw_predictions = compute_predictions(cnf_matrix, pred_index)
 	for date, pred in zip(cnf_predictables, raw_predictions):
 		predictions.loc[predictions.Date == date, f"CNF_{suffix}"] = pred
 
 	#Predict new deaths:
-	raw_predictions = maths.rint(exp_predict(pred_index, *exp_reg(dcs_matrix)))
+	raw_predictions = compute_predictions(dcs_matrix, pred_index)
 	for date, pred in zip(dcs_predictables, raw_predictions):
 		predictions.loc[predictions.Date == date, f"DCS_{suffix}"] = pred
 
